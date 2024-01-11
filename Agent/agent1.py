@@ -44,16 +44,16 @@ class Agent:
         self.full_path = os.path.join(self.ckpt_dir, self.model_name)
 
         # Initialize Replay Buffer
-        self.replay_buffer = ReplayBuffer(self.memory_size, self.state_dims, self.action_dims)
+        self.replay_buffer = ReplayBuffer(self.memory_size, self.state_dims,2)
 
         # Initialize Critics
-        self.critic_1 = Critic(self.beta, self.state_dims, self.action_dims, self.fc1_dim, self.fc2_dim,
+        self.critic_1 = Critic(self.beta, self.state_dims, 2, self.fc1_dim, self.fc2_dim,
                                name='Critic_1', ckpt_dir=self.ckpt_dir)
-        self.critic_2 = Critic(self.beta, self.state_dims, self.action_dims, self.fc1_dim, self.fc2_dim,
+        self.critic_2 = Critic(self.beta, self.state_dims, 2, self.fc1_dim, self.fc2_dim,
                                name='Critic_2', ckpt_dir=self.ckpt_dir)
-        self.target_critic_1 = Critic(self.beta, self.state_dims, self.action_dims, self.fc1_dim,
+        self.target_critic_1 = Critic(self.beta, self.state_dims, 2, self.fc1_dim,
                                       self.fc2_dim, name='Target_Critic_1', ckpt_dir=self.ckpt_dir)
-        self.target_critic_2 = Critic(self.beta, self.state_dims, self.action_dims, self.fc1_dim,
+        self.target_critic_2 = Critic(self.beta, self.state_dims, 2, self.fc1_dim,
                                       self.fc2_dim, name='Target_Critic_2', ckpt_dir=self.ckpt_dir)
 
         # Initialize Actor
@@ -140,9 +140,11 @@ class Agent:
 
         # learns only after warmup iteration and when there is at least a single full batch in buffer to load
         if self.learn_iter < self.warmup or self.learn_iter < self.batch_size:
-            # self.learn_iter += 1
+            self.learn_iter += 1
             return
-
+        print()
+        print("############# Agent Started Learning ##############")
+        print()
         states, actions, rewards, states_, done = self.load_batch()
         actions_ = self.target_actor.forward(states_).to(self.actor.device)
 

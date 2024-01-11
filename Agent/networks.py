@@ -19,6 +19,7 @@ class Critic(nn.Module):
         self.ckpt_path = os.path.join(self.ckpt_dir, self.name)
 
         # NN layers
+        # 28,100
         self.fc1 = nn.Linear(self.state_dims + self.action_dims, self.fc1_dims)
         self.fc2 = nn.Linear(self.fc1_dims, self.fc2_dims)
         self.fc3 = nn.Linear(self.fc2_dims, 1)
@@ -30,6 +31,8 @@ class Critic(nn.Module):
 
     def forward(self, state, action):
         state_action = T.cat((state, action), dim=1).float()
+        print(state_action)
+        # 2,28
         x = F.relu(self.fc1(state_action))
         x = F.relu(self.fc2(x))
         q = self.fc3(x)
@@ -73,12 +76,9 @@ class Actor(nn.Module):
         x = F.relu(self.fc1(state))
         x = F.relu(self.fc2(x))
         x = F.relu(self.fc3(x))
-        print(x)
-
         gasPredicted = x[:, self.action_dims - 1]
         mu = F.softmax(x[:, :self.action_dims - 1], dim=1)
         output = T.cat((mu, gasPredicted.unsqueeze(1)), dim=1)
-        print(output)
         return output
 
     def save_checkpoint(self):

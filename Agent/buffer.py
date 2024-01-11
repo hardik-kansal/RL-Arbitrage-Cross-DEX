@@ -2,7 +2,7 @@ import numpy as np
 
 
 class ReplayBuffer:
-    def __init__(self, buffer_size, state_dims, action_dims):
+    def __init__(self, buffer_size, state_dims, action_dims=2):
         self.buffer_size = buffer_size
         self.ptr = 0
         self.is_full = False

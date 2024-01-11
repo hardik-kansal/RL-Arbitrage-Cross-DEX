@@ -12,7 +12,7 @@ stepLimit=10
 env=ENV(profitThreshold,lpTerminalReward,wpTerminalReward,stepLimit)
 
 
-epsilon=0.1
+epsilon=0.9
 num_episodes=100
 gamma=0.99
 alpha=0.001
@@ -20,10 +20,10 @@ beta=0.002
 fc1_dim=100
 fc2_dim=100
 memory_size=50
-batch_size=25
+batch_size=2
 tau=1
 update_period=40
-warmup=25
+warmup=2
 name="model1"
 
 
@@ -32,25 +32,27 @@ def train(env,agent,epsilon,num_episodes):
     episode_lengths=[]
     profit_eachEpisode=[]
     for i in range(0,num_episodes):
+        print()
+        print(f"#########  Episode No-{i}")
         state=env.reset()
         actions=agent.choose_action(state)
-        print(actions)
         if np.random.rand() < epsilon:
-            print("explore")
+            print("Exploration")
             next_action = np.random.choice(np.arange(pools_dim), p=actions[0][:pools_dim])
         else:
-            print("greedy")
+            print("Greedy")
             next_action = np.argmax(actions[0][:pools_dim])
-        action=[next_action,actions[0][agent.action_dims-1]]
+        action=[next_action,int(actions[0][agent.action_dims-1])]
+        print(f"ActionPerformed--- {action}")
         step_size=0
         while True:
-            print(action)
             _state,reward,done=env.step(action)
+            agent.store_transition(state,action,reward,_state,done)
+            agent.learn()
             if(done):
                 profit_eachEpisode.append(env.profit)
                 break
-            agent.store_transition(state,action,reward,done)
-            agent.learn()
+
             step_size+=1
         episode_lengths.append(step_size)
         epsilon=epsilon/1.1
