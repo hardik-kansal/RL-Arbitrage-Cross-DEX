@@ -2,33 +2,30 @@ import os
 import torch as T
 import torch.nn.functional as F
 import numpy as np
-
+import random
 from buffer import ReplayBuffer
 from networks import Actor, Critic
 
 # Alpha for actor Beta for critic
 # buffer_size=memory_size
 class Agent:
-    def __init__(self, gamma, alpha, beta, state_dims, action_dims, max_action, min_action, fc1_dim, fc2_dim,
-                 memory_size, batch_size, tau, update_period, noise_std, noise_clip, warmup, name, ckpt_dir='tmp'):
+    def __init__(self,epsilon, gamma, alpha, beta, state_dims, action_dims, fc1_dim, fc2_dim,
+                 memory_size, batch_size, tau, update_period, warmup, name, ckpt_dir='tmp'):
         self.gamma = gamma
         self.alpha = alpha
         self.beta = beta
         self.state_dims = state_dims
         self.action_dims = action_dims
-        self.max_action = max_action
-        self.min_action = min_action
         self.fc1_dim = fc1_dim
         self.fc2_dim = fc2_dim
         self.memory_size = memory_size
         self.batch_size = batch_size
         self.update_period = update_period
         self.tau = tau
-        self.noise_std = noise_std
         self.warmup = warmup
-        self.noise_clip = noise_clip
         self.name = name
         self.ckpt_dir = ckpt_dir
+        self.epsilon=epsilon
 
         model_name = f'{name}__' \
                      f'gamma_{gamma}__' \
@@ -40,9 +37,7 @@ class Agent:
                      f'buffer_{memory_size}__' \
                      f'update_period_{update_period}__' \
                      f'tau_{tau}__' \
-                     f'noise_std_{noise_std}__' \
                      f'warmup_{warmup}__' \
-                     f'noise_clip_{noise_clip}__' \
 
         self.model_name = model_name
         self.learn_iter = 0
@@ -72,17 +67,9 @@ class Agent:
         # Here updating target networks param with main network
 
     # action is choosed by actor.
-    def choose_action(self, state, add_noise=True):
-        state = T.tensor([state], dtype=T.float).to(self.actor.device)
+    def choose_action(self, state,epsilon=None):
+        state = T.tensor(np.array([state]), dtype=T.float).to(self.actor.device)
         mu = self.actor.forward(state).to(self.actor.device)
-        # adding guassian noise for exploration purpose
-        if add_noise:
-            noise = np.random.normal(0, self.noise_std, self.action_dims)
-            noise = T.tensor(noise, dtype=T.float).to(self.actor.device)
-            mu = T.clamp(T.add(mu, noise), self.min_action, self.max_action)
-        poolIndex=np.argmax(mu[:self.action_dims-1])
-        gasPredicted=mu[self.action_dims]
-        mu=T.tensor([poolIndex,gasPredicted])
         return mu.cpu().detach().numpy()
 
     def store_transition(self, state, action, reward, state_, done):
@@ -157,13 +144,7 @@ class Agent:
             return
 
         states, actions, rewards, states_, done = self.load_batch()
-
-
-        noise = np.random.normal(0, self.noise_std, (self.batch_size, *self.action_dims))
-        # clamping means larger values have a new max and vica versa for smaller noise
-        noise = T.clamp(T.tensor(noise, dtype=T.float), -self.noise_clip, self.noise_clip).to(self.actor.device)
         actions_ = self.target_actor.forward(states_).to(self.actor.device)
-        actions_ = T.clamp(T.add(actions_, noise), self.min_action, self.max_action).to(self.actor.device)
 
         # compute the state action values
         q1 = self.critic_1.forward(states, actions).to(self.actor.device)

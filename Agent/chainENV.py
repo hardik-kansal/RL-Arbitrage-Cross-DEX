@@ -42,7 +42,7 @@ factory=w3.eth.contract(address=factoryAddr,abi=factoryABI)
 
 
 class ENV:
-    def __init__(self,profitThreshold,lpTerminalReward,wpTerminalReward):
+    def __init__(self,profitThreshold,lpTerminalReward,wpTerminalReward,stepLimit):
         self.pools_dim=self.getNoOfPools()
         self.array,self.count,self.decimals=self.getToken()
         self.action_dim=2
@@ -59,33 +59,38 @@ class ENV:
         self.maGas=self.estimateGas()
         self.predictedGas=self.maGas
         self.noOfsteps=0
-        self.noOfEpisodes=0
-    def estimateGas(self):
-        gasPrice=w3.from_wei(w3.eth.gas_price,'ether')
-        return (gasPrice*self.iGasLimit)
+        self.stepLimit=stepLimit
+        self.profit=0
     def calculateProfit(self):
         tokenIndex=self.getTokenSwapIndex()
-        return self.state_space[tokenIndex]-self.maGas*self.marketPrice[0]
+        maGas=w3.to_wei(self.maGas,'ether')
+        return self.state_space[tokenIndex]-(maGas*self.marketPrice[0])/(10**18)
     def step(self,actions):
         self.noOfsteps+=1
         poolIndex=actions[0]
         gasPredicted=actions[1]
         token0,token1,done,token1Index=self.getTokenID(poolIndex)
         if(done):
+             self.profit=self.wpTerminalReward
              return self.state_space,self.wpTerminalReward,True
         token0Index=self.getTokenSwapIndex()
         print(w3.eth.contract(address=self.array[token0Index], abi=wethABI).caller().balanceOf(recipient))
         amountIn=self.state_space[token0Index]*(10**int(self.decimals[token0Index]))/self.marketPrice[token1Index]
         print(token0,token1,int(amountIn))
         gasUsed=self.swap(token0,token1,int(amountIn),3000)
+        gasUsed=w3.from_wei(gasUsed,'ether')
         self.maGas=self.maGas+int(1/self.noOfsteps)*(gasUsed-self.maGas)
         self.predictedGas=self.predictedGas+int(1/self.noOfsteps)*(gasPredicted-self.predictedGas)
         token1Amount = w3.eth.contract(address=token1, abi=wethABI).caller().balanceOf(recipient)
-        self.updateStateSpace(token1Amount,token1Index)
         if(self.predictedGas<self.maGas):
+            print("No enough gas")
+            self.profit=self.wpTerminalReward
             return self.state_space,self.wpTerminalReward,True
-        profit=self.calculateProfit(gasUsed,token1Amount)
-        if(profit<self.profitThreshold):
+        self.updateStateSpace(token1Amount,token1Index)
+        profit=self.calculateProfit()
+        self.profit=profit
+        if(profit<self.profitThreshold & self.noOfsteps>=self.stepLimit):
+            print("low Profit")
             return self.state_space,self.lpTerminalReward,True
         else:
             return self.state_space,profit,False
@@ -101,7 +106,6 @@ class ENV:
         state_space[self.state_dim-1]=self.maGas
         self.state_space=state_space
     def reset(self):
-        self.noOfEpisodes+=1
         self.noOfsteps=0
         self.marketPrice = self.getMarketPrice()
         state_space=np.zeros(self.state_dim)
@@ -208,9 +212,11 @@ class ENV:
         return receipt.gasUsed
     def getTokenID(self,poolIndex):
         tokenIndex=self.getTokenSwapIndex()
+        print(tokenIndex)
         p=0
         for i in range(0,tokenIndex):
             p+=self.count-i-1
+        print(p)
         done=True
         if(poolIndex<p+self.count-1-tokenIndex and poolIndex>=p):
             done=False
@@ -219,10 +225,12 @@ class ENV:
         token1=self.array[token1Index]
         return token0,token1,done,token1Index
     def getTokenSwapIndex(self):
-        condn = self.state_space[:self.count] != 0
-        tokenIndex=np.where(condn)[0][0]
+        tokenIndex=np.argmax(self.state_space[:self.count])
         print(tokenIndex)
         return tokenIndex
+    def estimateGas(self):
+        gasPrice=w3.from_wei(w3.eth.gas_price,'ether')
+        return (gasPrice*self.iGasLimit)
 
 # def swap(token0, token1, amountIn, fee=3000):
 #         tx = w3.eth.contract(address=token0, abi=wethABI).functions.approve(routerAddr, amountIn).build_transaction({

@@ -19,7 +19,7 @@ class Critic(nn.Module):
         self.ckpt_path = os.path.join(self.ckpt_dir, self.name)
 
         # NN layers
-        self.fc1 = nn.Linear(*(np.array(self.state_dims) + np.array(self.action_dims)), self.fc1_dims)
+        self.fc1 = nn.Linear(self.state_dims + self.action_dims, self.fc1_dims)
         self.fc2 = nn.Linear(self.fc1_dims, self.fc2_dims)
         self.fc3 = nn.Linear(self.fc2_dims, 1)
 
@@ -60,9 +60,9 @@ class Actor(nn.Module):
         self.ckpt_path = os.path.join(self.ckpt_dir, self.name)
 
         # NN layers
-        self.fc1 = nn.Linear(*self.state_dims, self.fc1_dims)
+        self.fc1 = nn.Linear(self.state_dims, self.fc1_dims)
         self.fc2 = nn.Linear(self.fc1_dims, self.fc2_dims)
-        self.fc3 = nn.Linear(self.fc2_dims, *self.action_dims)
+        self.fc3 = nn.Linear(self.fc2_dims, self.action_dims)
 
         # Optimization objects
         self.optimizer = optim.Adam(self.parameters(), lr=self.lr)
@@ -72,8 +72,14 @@ class Actor(nn.Module):
     def forward(self, state):
         x = F.relu(self.fc1(state))
         x = F.relu(self.fc2(x))
-        mu = F.tanh(self.fc3(x))
-        return mu
+        x = F.relu(self.fc3(x))
+        print(x)
+
+        gasPredicted = x[:, self.action_dims - 1]
+        mu = F.softmax(x[:, :self.action_dims - 1], dim=1)
+        output = T.cat((mu, gasPredicted.unsqueeze(1)), dim=1)
+        print(output)
+        return output
 
     def save_checkpoint(self):
         print('... saving checkpoint ...')

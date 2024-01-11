@@ -8,11 +8,11 @@ class ReplayBuffer:
         self.is_full = False
 
         # Init buffer
-        self.states = np.zeros((self.buffer_size, *state_dims), dtype=np.float32)
-        self.states_ = np.zeros((self.buffer_size, *state_dims), dtype=np.float32)
-        self.actions = np.zeros((self.buffer_size, *action_dims), dtype=np.float32)
+        self.states = np.zeros((self.buffer_size, state_dims), dtype=np.float32)
+        self.states_ = np.zeros((self.buffer_size, state_dims), dtype=np.float32)
+        self.actions = np.zeros((self.buffer_size, action_dims), dtype=np.float32)
         self.rewards = np.zeros((self.buffer_size, ), dtype=np.float32)
-        self.done = np.zeros((self.buffer_size,), dtype=np.bool)
+        self.done = np.zeros((self.buffer_size,), dtype=np.bool_)
 
     def store_transition(self, state, action, reward, state_, done):
         self.states[self.ptr] = state
