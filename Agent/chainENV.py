@@ -37,16 +37,13 @@ swapContract=w3.eth.contract(address=routerAddr,abi=routerABI)
 factory=w3.eth.contract(address=factoryAddr,abi=factoryABI)
 
 
-def calculateProfit(gasUsed,marketPrice,tokenAmount):
-    tokenPrice=np.multiply(marketPrice,tokenAmount)
-    gasUsed=marketPrice[0]*gasUsed
-    return tokenPrice-gasUsed
+
 
 
 
 
 class chainENV:
-    def __init__(self):
+    def __init__(self,profitThreshold,lpTerminalReward,wpTerminalReward):
         self.pools_dim=self.getNoOfPools()
         self.action_dim=2
         self.state_dim=self.getStateDim()
@@ -54,43 +51,75 @@ class chainENV:
         self.state_space=np.zeroes(self.state_dim)
         self.action_space=np.zeroes(self.action_dim)
         self.pool_addr=self.getPoolAddr()
+        self.agentTokens=np.zeroes(self.count)
+        self.marketPrice=self.getMarketPrice()
+        self.profitThreshold=profitThreshold
+        self.lpTerminalReward=lpTerminalReward
+        self.wpTerminalReward=wpTerminalReward
 
 
     def getTokenID(self,poolIndex):
-        pass
-        #
-        # p=0
-        # for i in range(0,tokenIndex):
-        #     p+=self.count-i-1
-        #
-        # if(poolIndex<self.count-1 and poolIndex>=p):
-        #     return tokenIndex,False
-        # else:
-        #     return tokenIndex,True
+        tokenIndex=self.getTokenSwapIndex()
+        p=0
+        for i in range(0,tokenIndex):
+            p+=self.count-i-1
+        done=True
+        if(poolIndex<p+self.count-1-tokenIndex and poolIndex>=p):
+            done=False
+        token0=self.array[tokenIndex]
+        token1Index=tokenIndex+poolIndex-p
+        token1=self.array[token1Index]
+        return token0,token1,done,token1Index
     def getTokenSwapIndex(self):
         condn = self.state_space[:self.count] != 0
         tokenIndex=np.where(condn)[0][0]
         return tokenIndex
+
+    def calculateProfit(self,gasUsed, tokenAmount):
+        marketPrice=self.marketPrice
+        tokenPrice = np.multiply(marketPrice, tokenAmount)
+        gasUsed = marketPrice[0] * gasUsed
+        return tokenPrice - gasUsed
     def step(self,actions):
         poolIndex=actions[0]
         gasPredicted=actions[1]
         pooladdr=self.pool_addr[poolIndex]
-        token0,token1,done=self.getTokenID(poolIndex)
+        token0,token1,done,token1Index=self.getTokenID(poolIndex)
         if(done):
-            pass
-        self.swap(token0,token1,self.state_space[self.getTokenSwapIndex()],3000)
-        # check profit by gasUsed and if else Profit
-        # reward=
-        _state=self.getStateSpace()
-        pass
-    def getStateSpace(self):
+            return self.state_space,self.wpTerminalReward,True
+        gasUsed=self.swap(token0,token1,self.state_space[self.getTokenSwapIndex()],3000)
+        token1Amount = w3.eth.contract(address=token1, abi=wethABI).caller().balanceOf(recipient)
+        self.updateStateSpace(gasUsed,token1Amount,token1Index)
+        profit=self.calculateProfit(gasUsed,token1Amount)
+        if(profit<self.profitThreshold):
+            return self.state_space,self.lpTerminalReward,True
+        else:
+            return self.state_space,profit,False
+    def updateStateSpace(self,gasUsed,token1Amount,token1Index):
         reserves=self.reserves()
-        pass
+        state_space=self.state_space
+        state_space[self.getTokenSwapIndex()]=0
+        state_space[token1Index]=token1Amount
+        for i in range(self.count,self.state_dim-1):
+            state_space[i]=reserves[i]
+        state_space[self.state_dim-1]=gasUsed
+        self.state_space=state_space
+
+
+
 
 
     def reset(self):
-        # get_state_initial
-        pass
+        reserves=self.reserves()
+        state_space=self.state_space
+        state_space[0]=self.get_weth()
+        for i in range(self.count,self.state_dim-1):
+            state_space[i]=reserves[i]
+        state_space[self.state_dim-1]=gasUsed
+        self.state_space=state_space
+        return state_space
+
+
     def get_weth(a=0.01, b=0.02):
         value = random.uniform(a, b)
         wethContract = w3.eth.contract(address=wethAddr, abi=wethABI)
@@ -103,6 +132,7 @@ class chainENV:
         tx_hash = w3.eth.send_raw_transaction(signed_tx.rawTransaction)
         tx = w3.eth.get_transaction(tx_hash)
         print(tx)
+        return value
     def getMarketPrice(self):
         symbol = []
         for i in config['TOKENS']:
@@ -146,9 +176,13 @@ class chainENV:
     def reserves(self):
         count=self.count
         array=self.array
+        array1=[]
         for i in range(0, count):
             for j in range(i + 1, count):
-                print(self.getReserves(array[i], array[j]))
+                token0,token1=self.getReserves(array[i], array[j])
+                array1.append(token0)
+                array1.append(token1)
+        return array1
     def getPoolAddr(self):
         array = self.array
         array1=[]
@@ -172,8 +206,8 @@ class chainENV:
         })
         signed_tx = w3.eth.account.sign_transaction(swapTx, private_key=privateKey)
         tx_hash = w3.eth.send_raw_transaction(signed_tx.rawTransaction)
-        tx = w3.eth.get_transaction(tx_hash)
-        print(tx)
+        receipt = w3.eth.waitForTransactionReceipt(tx_hash)
+        return receipt.gasUsed
 
 
 
