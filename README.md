@@ -1,16 +1,28 @@
 
 # Reinforcemnt Learning Based Cross--DEX Arbitrage Agent
 
-Under Development - Model is not trained yet.
-Use conda for python installation
-Use Py-charm for IDE for python
 
+### Prerequisites
+
+- Make sure you have `anaconda` installed for managing Python packages and `PyCharm` as IDE.
+ 
+- Model is under development and has not yet trained.
+
+ 
+### Overview  
+
+
+- I have used **Twin Delayed Deep Deterministic Policy Gradient** (TD3 DDPG) with **PyTorch**
+  
+- Updating Arbitrage Bot is pain in the ass. This project is a proof-of-concept that favours arbitrage opportunities in ethereum network. Rl can easily be extended to cross-dex once model 
+  is trained.
+ 
 
 
 
 ## Installation
 
-Run these commands on Terminal
+- Run these commands on Terminal
 
 ```bash
 git clone git@github.com:hardik-kansal/RL-Arbitrage-Cross-DEX.git
@@ -18,27 +30,37 @@ cd RL-Arbitrage-Cross-DEX
 cd chainENV 
 yarn install
 ```
-Get `COINMARKETCAP API-KEY` from `https://coinmarketcap.com/api/` \
-Get `ALCHEMY API-KEY` from `https://coinmarketcap.com/api/`
 
-Run hardhat Mainnet Fork
+- Get `COINMARKETCAP API-KEY` from `https://coinmarketcap.com/api/`  
+  
+- Get `ALCHEMY API-KEY` from `https://www.alchemy.com/`
+
+
+- Run the following command to start hardhat mainnet fork locally.
+  
 ```bash
  yarn hardhat node --fork https://eth-mainnet.g.alchemy.com/v2/[ALCHEMY API-KEY]
 ```
-Copy any account and private-Key and paste under [ACCOUNT] at Agent/config.ini
 
-you can add any no of tokens (currently from uniswap only) in given format
 
-ETH=[decimal][ethereum-address]
+
+- Copy any account and private-Key and paste under `ACCOUNT` in `Agent/config.ini`
+
+- You can add any no of tokens (currently from **UNISWAP** only) in the format `ETH=[decimal][ethereum-address]`
+
 
 
 
 
 ## Training
 
-Go to train.py and change following hyperparamters
-epsilon=0.99
-num_episodes=100
+- Go to `train.py` and change following hyperparamters
+
+##### Agent
+
+```
+epsilon=0.99  
+num_episodes=10000
 gamma=0.99
 alpha=0.001
 beta=0.002
@@ -50,9 +72,25 @@ tau=1
 update_period=40
 warmup=10
 name="model1"
+```
 
-To start training, run train.py
+
+
+##### Reward
+
+```
+profitThreshold=100  | **min profit**
+lpTerminalReward=200 | **low or negative profit**
+wpTerminalReward=-1000 | **no token exist in pool**
+ngTerminalReward=-100 | **less gas used**
+stepLimit=10 | **no of steps or swap in a episode **
+```
+
+- To start training, run `train.py`
+
+
+
 
 ## Reward 
 
-To change reward for the agent go to Agent/chainENV.py and change step function
+- To change reward for the agent go to `Agent/chainENV.py` and change `step` function
