@@ -6,24 +6,25 @@ import matplotlib.pyplot as plt
 
 profitThreshold=10
 lpTerminalReward=0
-wpTerminalReward=-1000
+wpTerminalReward=-10
+ngTerminalReward=5
 stepLimit=10
 
-env=ENV(profitThreshold,lpTerminalReward,wpTerminalReward,stepLimit)
+env=ENV(profitThreshold,lpTerminalReward,wpTerminalReward,ngTerminalReward,stepLimit)
 
 
-epsilon=0.9
-num_episodes=100
+epsilon=0.2
+num_episodes=1000
 gamma=0.99
 alpha=0.001
 beta=0.002
 fc1_dim=100
 fc2_dim=100
 memory_size=50
-batch_size=2
+batch_size=50
 tau=1
 update_period=40
-warmup=2
+warmup=10
 name="model1"
 
 
@@ -38,7 +39,7 @@ def train(env,agent,epsilon,num_episodes):
         actions=agent.choose_action(state)
         if np.random.rand() < epsilon:
             print("Exploration")
-            next_action = np.random.choice(np.arange(pools_dim), p=actions[0][:pools_dim])
+            next_action = np.random.choice(np.arange(pools_dim))
         else:
             print("Greedy")
             next_action = np.argmax(actions[0][:pools_dim])
@@ -47,7 +48,7 @@ def train(env,agent,epsilon,num_episodes):
         step_size=0
         while True:
             _state,reward,done=env.step(action)
-            agent.store_transition(state,action,reward,_state,done)
+            agent.store_transition(state,actions,reward,_state,done)
             agent.learn()
             if(done):
                 profit_eachEpisode.append(env.profit)
@@ -55,7 +56,7 @@ def train(env,agent,epsilon,num_episodes):
 
             step_size+=1
         episode_lengths.append(step_size)
-        epsilon=epsilon/1.1
+        # epsilon=epsilon/1.1
 
     return episode_lengths,profit_eachEpisode
 

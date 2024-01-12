@@ -42,7 +42,7 @@ factory=w3.eth.contract(address=factoryAddr,abi=factoryABI)
 
 
 class ENV:
-    def __init__(self,profitThreshold,lpTerminalReward,wpTerminalReward,stepLimit):
+    def __init__(self,profitThreshold,lpTerminalReward,wpTerminalReward,ngTerminalReward,stepLimit):
         self.pools_dim=self.getNoOfPools()
         self.array,self.count,self.decimals=self.getToken()
         self.action_dim=2
@@ -55,12 +55,14 @@ class ENV:
         self.profitThreshold=profitThreshold
         self.lpTerminalReward=lpTerminalReward
         self.wpTerminalReward=wpTerminalReward
+        self.ngTerminalReward=ngTerminalReward
         self.iGasLimit=int(random.uniform(140000,150000))
         self.maGas=self.estimateGas()
         self.predictedGas=self.maGas
         self.noOfsteps=0
         self.stepLimit=stepLimit
         self.profit=0
+        self.noOfEpisodes=0
     def calculateProfit(self):
         tokenIndex=self.getTokenSwapIndex()
         maGas=w3.to_wei(self.maGas,'ether')
@@ -86,7 +88,7 @@ class ENV:
         if(self.predictedGas<self.maGas):
             print("#########   Terminal Result--Not enough gas")
             self.profit=self.wpTerminalReward
-            return self.state_space,self.wpTerminalReward,True
+            return self.state_space,self.ngTerminalReward,True
         self.updateStateSpace(token1Amount,token1Index)
         profit=self.calculateProfit()
         self.profit=profit
@@ -108,7 +110,10 @@ class ENV:
         self.state_space=state_space
     def reset(self):
         self.noOfsteps=0
-        self.marketPrice = self.getMarketPrice()
+        self.noOfEpisodes+=1
+        if(self.noOfEpisodes%25==0):
+            self.marketPrice = self.getMarketPrice()
+
         state_space=np.zeros(self.state_dim)
         reserves=self.reserves()
         state_space[0]=self.get_weth()*self.marketPrice[0]
@@ -116,6 +121,8 @@ class ENV:
         for i in range(self.count,self.state_dim-1):
             state_space[i]=reserves[c]
             c+=1
+        self.iGasLimit=int(random.uniform(140000,150000))
+
         state_space[self.state_dim-1]=self.estimateGas()
         self.state_space=state_space
         return state_space
