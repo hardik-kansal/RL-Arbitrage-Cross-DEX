@@ -6,10 +6,6 @@ module.exports = {
   networks: {
     hardhat: {
       chainId:1337,
-      forking: {
-        url: "https://eth-mainnet.g.alchemy.com/v2/MkbgG8QqySzFWGpWGXKPQft3lUYDmmz3",
-        // blockNumber: 18961474
-      }
     }
   }
 };

@@ -63,23 +63,25 @@ class ENV:
         self.stepLimit=stepLimit
         self.profit=0
         self.noOfEpisodes=0
+
+
     def calculateProfit(self):
         tokenIndex=self.getTokenSwapIndex()
         maGas=w3.to_wei(self.maGas,'ether')
         return self.state_space[tokenIndex]-(maGas*self.marketPrice[0])/(10**18)
+
+
     def step(self,actions):
         self.noOfsteps+=1
         poolIndex=actions[0]
         gasPredicted=actions[1]
         token0,token1,done,token1Index=self.getTokenID(poolIndex)
         if(done):
-             print("#########   Terminal Result--  Wrong Pool")
+             print(f"#########   Terminal Result--  Wrong Pool {self.noOfsteps}")
              self.profit=self.wpTerminalReward
-             return self.state_space,self.wpTerminalReward,True
+             return self.state_space,self.wpTerminalReward+self.noOfsteps*100,True
         token0Index=self.getTokenSwapIndex()
-        # print(w3.eth.contract(address=self.array[token0Index], abi=wethABI).caller().balanceOf(recipient))
         amountIn=self.state_space[token0Index]*(10**int(self.decimals[token0Index]))/self.marketPrice[token1Index]
-        # print(token0,token1,int(amountIn))
         gasUsed=self.swap(token0,token1,int(amountIn),3000)
         gasUsed=w3.from_wei(gasUsed,'ether')
         self.maGas=self.maGas+int(1/self.noOfsteps)*(gasUsed-self.maGas)
@@ -97,6 +99,8 @@ class ENV:
             return self.state_space,self.lpTerminalReward,True
         else:
             return self.state_space,profit,False
+
+
     def updateStateSpace(self,token1Amount,token1Index):
         reserves=self.reserves()
         state_space=self.state_space
@@ -108,6 +112,8 @@ class ENV:
             c+=1
         state_space[self.state_dim-1]=self.maGas
         self.state_space=state_space
+
+
     def reset(self):
         self.noOfsteps=0
         self.noOfEpisodes+=1
@@ -126,6 +132,8 @@ class ENV:
         state_space[self.state_dim-1]=self.estimateGas()
         self.state_space=state_space
         return state_space
+
+
     def get_weth(self,a=0.01, b=0.02):
         value = random.uniform(a, b)
         wethContract = w3.eth.contract(address=wethAddr, abi=wethABI)
@@ -137,6 +145,8 @@ class ENV:
         signed_tx = w3.eth.account.sign_transaction(get_weth, private_key=privateKey)
         w3.eth.send_raw_transaction(signed_tx.rawTransaction)
         return  value
+
+
     def getMarketPrice(self):
         symbol = []
         for i in config['TOKENS']:
@@ -153,15 +163,21 @@ class ENV:
         for i in json:
             array.append(json[symbol[c]]['quote']['USD']['price'])
         return array
+
+
     def getNoOfPools(self):
         k = (config['TOKENS'].keys())
         count = 0
         for i in k:
             count += 1
         return comb(count, 2)
+
+
     def getStateDim(self):
        p = self.pools_dim*2
        return self.count + p + 1
+
+
     def getToken(self):
         array = []
         array1=[]
@@ -173,11 +189,15 @@ class ENV:
             array1.append(c[i][:2])
             count += 1
         return array, count,array1
+
+
     def getReserves(self,token0, token1,poolAddr):
 
         token0 = w3.eth.contract(address=token0, abi=wethABI).caller().balanceOf(poolAddr)
         token1 = w3.eth.contract(address=token1, abi=wethABI).caller().balanceOf(poolAddr)
         return token0, token1
+
+
     def reserves(self):
         count=self.count
         array=self.array
@@ -190,6 +210,8 @@ class ENV:
                 array1.append(token0*self.marketPrice[i]*(10**(-int(self.decimals[i]))))
                 array1.append(token1*self.marketPrice[j]*(10**(-int(self.decimals[j]))))
         return array1
+
+
     def getPoolAddr(self):
         array = self.array
         array1=[]
@@ -215,44 +237,31 @@ class ENV:
         tx_hash = w3.eth.send_raw_transaction(signed_tx.rawTransaction)
         receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
         return receipt.gasUsed
+
+
     def getTokenID(self,poolIndex):
         tokenIndex=self.getTokenSwapIndex()
+        print("tokenIndex---",tokenIndex)
         p=0
         for i in range(0,tokenIndex):
             p+=self.count-i-1
-        done=False
-        if(poolIndex>=p+self.count-1-tokenIndex or poolIndex<p):
-            done=True
-            return "", "", done, 0
-        token0=self.array[tokenIndex]
-        token1Index=tokenIndex+poolIndex-p+1
-        token1=self.array[token1Index]
-        return token0,token1,done,token1Index
+        # print("p value--" ,p)
+        if(poolIndex<p+self.count-1-tokenIndex and poolIndex>=p):
+            token0 = self.array[tokenIndex]
+            token1Index = tokenIndex + poolIndex - p + 1
+            token1 = self.array[token1Index]
+            return token0, token1, False, token1Index
+        return "", "", True, 0
+
+
     def getTokenSwapIndex(self):
         tokenIndex=np.argmax(self.state_space[:self.count])
         return tokenIndex
+
+
     def estimateGas(self):
         gasPrice=w3.from_wei(w3.eth.gas_price,'ether')
         return (gasPrice*self.iGasLimit)
-
-# def swap(token0, token1, amountIn, fee=3000):
-#         tx = w3.eth.contract(address=token0, abi=wethABI).functions.approve(routerAddr, amountIn).build_transaction({
-#             "from": recipient,
-#             "nonce": w3.eth.get_transaction_count(recipient)
-#         })
-#         signed_tx = w3.eth.account.sign_transaction(tx, private_key=privateKey)
-#         tx_hash = w3.eth.send_raw_transaction(signed_tx.rawTransaction)
-#         print(tx_hash)
-#         swapTx = swapContract.functions.exactInputSingle(
-#             (token0, token1, fee, recipient, int(time.time()) + 60, amountIn, 0, 0)).build_transaction({
-#             "from": recipient,
-#             "nonce": w3.eth.get_transaction_count(recipient)
-#         })
-#         signed_tx = w3.eth.account.sign_transaction(swapTx, private_key=privateKey)
-#         tx_hash = w3.eth.send_raw_transaction(signed_tx.rawTransaction)
-#         receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
-#         return receipt.gasUsed
-# swap("0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2","0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",int(1.1277958678500254e+16))
 
 
 

@@ -1,25 +1,25 @@
 from chainENV import ENV
 from agent1 import Agent
 import numpy as np
-import matplotlib.pyplot as plt
+from utils import plot_learning_curve
 
 
-profitThreshold=10
-lpTerminalReward=0
-wpTerminalReward=-10
-ngTerminalReward=5
+profitThreshold=100
+lpTerminalReward=200
+wpTerminalReward=-1000
+ngTerminalReward=-100
 stepLimit=10
 
 env=ENV(profitThreshold,lpTerminalReward,wpTerminalReward,ngTerminalReward,stepLimit)
 
 
-epsilon=0.2
-num_episodes=1000
+epsilon=0.99
+num_episodes=100
 gamma=0.99
 alpha=0.001
 beta=0.002
-fc1_dim=100
-fc2_dim=100
+fc1_dim=256
+fc2_dim=256
 memory_size=50
 batch_size=50
 tau=1
@@ -36,17 +36,20 @@ def train(env,agent,epsilon,num_episodes):
         print()
         print(f"#########  Episode No-{i}")
         state=env.reset()
-        actions=agent.choose_action(state)
-        if np.random.rand() < epsilon:
-            print("Exploration")
-            next_action = np.random.choice(np.arange(pools_dim))
-        else:
-            print("Greedy")
-            next_action = np.argmax(actions[0][:pools_dim])
-        action=[next_action,int(actions[0][agent.action_dims-1])]
-        print(f"ActionPerformed--- {action}")
         step_size=0
         while True:
+            actions = agent.choose_action(state)
+            r = np.random.rand()
+            print(r)
+            if r < epsilon:
+                print("Exploration")
+                next_action = np.random.choice(np.arange(pools_dim))
+            else:
+                print("Greedy")
+                next_action = np.argmax(actions[0][:pools_dim])
+                # int(actions[0][agent.action_dims - 1])
+            action = [next_action, 0]
+            print(f"ActionPerformed--- {action}")
             _state,reward,done=env.step(action)
             agent.store_transition(state,actions,reward,_state,done)
             agent.learn()
@@ -56,7 +59,9 @@ def train(env,agent,epsilon,num_episodes):
 
             step_size+=1
         episode_lengths.append(step_size)
-        # epsilon=epsilon/1.1
+        if(num_episodes%100==0):
+            epsilon = epsilon-0.03
+
 
     return episode_lengths,profit_eachEpisode
 
@@ -69,14 +74,7 @@ agent=Agent(epsilon, gamma, alpha, beta, state_dims, action_dims, fc1_dim, fc2_d
 
 
 episode_lengths,profit_eachEpisode = train(env, agent, epsilon, num_episodes)
+plot_learning_curve(episode_lengths,profit_eachEpisode,"LearningPlot1",False)
 
-# Plotting the episode lengths
-plt.plot(episode_lengths, label='Episode Lengths', color='blue')
-plt.plot(profit_eachEpisode, label='Profits Each Episode', color='orange')
-plt.xlabel('Episode')
-plt.ylabel('Values')
-plt.title('Episode Lengths and Profit_eachEpsiode')
-plt.legend()
-plt.show()
 
 

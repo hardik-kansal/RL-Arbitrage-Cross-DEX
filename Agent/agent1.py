@@ -2,12 +2,9 @@ import os
 import torch as T
 import torch.nn.functional as F
 import numpy as np
-import random
 from buffer import ReplayBuffer
 from networks import Actor, Critic
 
-# Alpha for actor Beta for critic
-# buffer_size=memory_size
 class Agent:
     def __init__(self,epsilon, gamma, alpha, beta, state_dims, action_dims, fc1_dim, fc2_dim,
                  memory_size, batch_size, tau, update_period, warmup, name, ckpt_dir='tmp'):
@@ -137,8 +134,6 @@ class Agent:
         self.target_critic_2.load_checkpoint(gpu_to_cpu=gpu_to_cpu)
 
     def learn(self):
-
-        # learns only after warmup iteration and when there is at least a single full batch in buffer to load
         if self.learn_iter%self.warmup!=0 or self.learn_iter < self.batch_size:
             self.learn_iter += 1
             return

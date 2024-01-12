@@ -1,13 +1,10 @@
-import numpy as np
 import matplotlib.pyplot as plt
-def plot_learning_curve(x, filename, save_plot=True):
-    avg_x = [np.mean(x[np.max([0, i - 100]):i]) for i in range(len(x))]
-    plt.figure(dpi=200)
-    plt.title('Learning Curve')
-    plt.plot(range(len(x)), x, label='score', alpha=0.3)
-    plt.plot(range(len(avg_x)), avg_x, label='average score')
+def plot_learning_curve(episode_lengths,profit_eachEpisode, filename, save_plot=False):
+    plt.plot(episode_lengths, label='Episode Lengths', color='blue')
+    plt.plot(profit_eachEpisode, label='Profits Each Episode', color='orange')
     plt.xlabel('Episode')
-    plt.ylabel('Score')
+    plt.ylabel('Values')
+    plt.title('Episode Lengths and Profit_eachEpsiode')
     plt.legend()
     plt.grid()
     if save_plot:

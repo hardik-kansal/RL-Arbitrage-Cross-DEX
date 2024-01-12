@@ -64,10 +64,7 @@ class Actor(nn.Module):
         self.fc1 = nn.Linear(self.state_dims, self.fc1_dims)
         self.fc2 = nn.Linear(self.fc1_dims, self.fc2_dims)
         self.fc3 = nn.Linear(self.fc2_dims, self.action_dims-1)
-
-
-        self.fc4=nn.Linear(1,fc1_dims)
-        self.fc5=nn.Linear(fc1_dims,1)
+        self.fc4=nn.Linear(self.fc2_dims,1)
 
         # Optimization objects
         self.optimizer = optim.Adam(self.parameters(), lr=self.lr)
@@ -77,13 +74,9 @@ class Actor(nn.Module):
     def forward(self, state):
         x = F.relu(self.fc1(state))
         y = F.relu(self.fc2(x))
-        z= F.relu(self.fc3(y))
-        a=F.relu(self.fc4(state[:,self.state_dims-1:]))
-        print(a)
-
-        gasPredicted = F.relu(self.fc5(a))
-        print(gasPredicted)
-        mu = F.softmax(z, dim=1)
+        x = F.relu(self.fc3(y))
+        gasPredicted = F.relu(self.fc4(y))
+        mu = F.softmax(x, dim=1)
         output = T.cat((mu, gasPredicted), dim=1)
         return output
 
