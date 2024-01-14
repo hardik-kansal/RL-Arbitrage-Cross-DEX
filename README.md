@@ -14,8 +14,8 @@
 
 - I have used **Twin Delayed Deep Deterministic Policy Gradient** (TD3 DDPG) with **PyTorch**
   
-- Updating Arbitrage Bot is pain in the ass. This project is a proof-of-concept that favours arbitrage opportunities in ethereum network. Rl can easily be extended to cross-dex once model 
-  is trained.
+- Updating Arbitrage Bot is pain in the ass. This project is a proof-of-concept that favours arbitrage opportunities in ethereum network. Rl can easily be extended to cross-dex once model is trained.
+- I have used **UniswapV3** as example.
  
 
 
@@ -46,7 +46,7 @@ yarn install
 
 - Copy any account and private-Key and paste under `ACCOUNT` in `Agent/config.ini`
 
-- You can add any no of tokens (currently from **UNISWAP** only) in the format `ETH=[decimal][ethereum-address]`
+- You can add any no of tokens (currently from **UniswapV3** only) in the format `ETH=[decimal][ethereum-address]`
 
 
 
@@ -94,3 +94,12 @@ stepLimit=10 | **no of steps or swap in a episode **
 ## Reward 
 
 - To change reward for the agent go to `Agent/chainENV.py` and change `step` function
+
+  
+#### Constraints
+- Infinite-gas
+- Moving Average Gas predicted > Moving Average gas Used
+- Max step or No of swaps in a single tx - 10
+- Profit > profitThreshold
+- state-space :  [TokenHoldings of Agent (USD),Pool reserves,Market price,Gas Used]
+- action-space : [PoolIndex,Gaspredicted]
