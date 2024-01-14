@@ -1,1 +1,1 @@
-apiKey="Paste Coin Market Cap API-KEY here"
+apiKey="API-KEY"

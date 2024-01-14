@@ -75,29 +75,38 @@ class ENV:
         self.noOfsteps+=1
         poolIndex=actions[0]
         gasPredicted=actions[1]
+        if(gasPredicted==-1):
+            print("#########   Terminal Result--Infinite Gas")
+            self.profit=self.ngTerminalReward
+            return self.state_space,self.ngTerminalReward,True
+
         token0,token1,done,token1Index=self.getTokenID(poolIndex)
         if(done):
              print(f"#########   Terminal Result--  Wrong Pool {self.noOfsteps}")
              self.profit=self.wpTerminalReward
              return self.state_space,self.wpTerminalReward+self.noOfsteps*100,True
         token0Index=self.getTokenSwapIndex()
+        # amountIn=w3.eth.contract(address=token0,abi=wethABI).caller().balanceOf(recipient)/(10**int(self.decimals[token0Index]))
+        print(self.state_space[:self.count])
         amountIn=self.state_space[token0Index]*(10**int(self.decimals[token0Index]))/self.marketPrice[token1Index]
         gasUsed=self.swap(token0,token1,int(amountIn),3000)
         gasUsed=w3.from_wei(gasUsed,'ether')
         self.maGas=self.maGas+int(1/self.noOfsteps)*(gasUsed-self.maGas)
         self.predictedGas=self.predictedGas+int(1/self.noOfsteps)*(gasPredicted-self.predictedGas)
         token1Amount = w3.eth.contract(address=token1, abi=wethABI).caller().balanceOf(recipient)
+        token1Amount=token1Amount/(10**int(self.decimals[token1Index]))
         if(self.predictedGas<self.maGas):
             print("#########   Terminal Result--Not enough gas")
-            self.profit=self.wpTerminalReward
+            self.profit=self.ngTerminalReward
             return self.state_space,self.ngTerminalReward,True
         self.updateStateSpace(token1Amount,token1Index)
         profit=self.calculateProfit()
         self.profit=profit
-        if(profit<self.profitThreshold & self.noOfsteps>=self.stepLimit):
+        if(profit<self.profitThreshold or self.noOfsteps>=self.stepLimit):
             print("#########   Terminal Result--  Low Profit")
             return self.state_space,self.lpTerminalReward,True
         else:
+            print("#########   Terminal State -- PROFIT")
             return self.state_space,profit,False
 
 
@@ -107,7 +116,8 @@ class ENV:
         state_space[self.getTokenSwapIndex()]=0
         state_space[token1Index]=token1Amount*self.marketPrice[token1Index]
         c=0
-        for i in range(self.count,self.state_dim-1):
+        b=self.count+self.pools_dim*2
+        for i in range(self.count,b):
             state_space[i]=reserves[c]
             c+=1
         state_space[self.state_dim-1]=self.maGas
@@ -115,17 +125,29 @@ class ENV:
 
 
     def reset(self):
+        # contract=w3.eth.contract(address=wethAddr,abi=wethABI)
+        # amountToBurn=contract.caller().balanceOf(recipient)
+        # tx_hash=contract.functions._burn(recipient,amountToBurn).build_transaction({
+        #     "from": recipient,
+        #     "nonce": w3.eth.get_transaction_count(recipient)
+        # })
         self.noOfsteps=0
         self.noOfEpisodes+=1
-        if(self.noOfEpisodes%25==0):
+        if(self.noOfEpisodes%50==0):
             self.marketPrice = self.getMarketPrice()
 
         state_space=np.zeros(self.state_dim)
         reserves=self.reserves()
         state_space[0]=self.get_weth()*self.marketPrice[0]
         c=0
-        for i in range(self.count,self.state_dim-1):
+        b=self.count+self.pools_dim*2
+        market=self.marketPrice
+        for i in range(self.count,b):
             state_space[i]=reserves[c]
+            c+=1
+        c=0
+        for i in range(b,self.state_dim-1):
+            state_space[i]=market[c]
             c+=1
         self.iGasLimit=int(random.uniform(140000,150000))
 
@@ -175,7 +197,7 @@ class ENV:
 
     def getStateDim(self):
        p = self.pools_dim*2
-       return self.count + p + 1
+       return self.count*2 + p + 1
 
 
     def getToken(self):
@@ -241,7 +263,7 @@ class ENV:
 
     def getTokenID(self,poolIndex):
         tokenIndex=self.getTokenSwapIndex()
-        print("tokenIndex---",tokenIndex)
+        # print("tokenIndex---",tokenIndex)
         p=0
         for i in range(0,tokenIndex):
             p+=self.count-i-1
