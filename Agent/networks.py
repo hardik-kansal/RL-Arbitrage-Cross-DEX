@@ -1,5 +1,4 @@
 import os
-import numpy as np
 import torch as T
 import torch.optim as optim
 import torch.nn as nn

@@ -63,12 +63,13 @@ class ENV:
         self.stepLimit=stepLimit
         self.profit=0
         self.noOfEpisodes=0
+        self.initialAmount=0
 
 
     def calculateProfit(self):
         tokenIndex=self.getTokenSwapIndex()
         maGas=w3.to_wei(self.maGas,'ether')
-        return self.state_space[tokenIndex]-(maGas*self.marketPrice[0])/(10**18)
+        return self.initialAmount-self.state_space[tokenIndex]-(maGas*self.marketPrice[0])/(10**18)
 
 
     def step(self,actions):
@@ -81,12 +82,14 @@ class ENV:
             return self.state_space,self.ngTerminalReward,True
 
         token0,token1,done,token1Index=self.getTokenID(poolIndex)
+
         if(done):
              print(f"#########   Terminal Result--  Wrong Pool {self.noOfsteps}")
              self.profit=self.wpTerminalReward
              return self.state_space,self.wpTerminalReward+self.noOfsteps*100,True
+
+
         token0Index=self.getTokenSwapIndex()
-        # amountIn=w3.eth.contract(address=token0,abi=wethABI).caller().balanceOf(recipient)/(10**int(self.decimals[token0Index]))
         print(self.state_space[:self.count])
         amountIn=self.state_space[token0Index]*(10**int(self.decimals[token0Index]))/self.marketPrice[token1Index]
         gasUsed=self.swap(token0,token1,int(amountIn),3000)
@@ -95,18 +98,22 @@ class ENV:
         self.predictedGas=self.predictedGas+int(1/self.noOfsteps)*(gasPredicted-self.predictedGas)
         token1Amount = w3.eth.contract(address=token1, abi=wethABI).caller().balanceOf(recipient)
         token1Amount=token1Amount/(10**int(self.decimals[token1Index]))
+
+
         if(self.predictedGas<self.maGas):
             print("#########   Terminal Result--Not enough gas")
             self.profit=self.ngTerminalReward
-            return self.state_space,self.ngTerminalReward,True
+            return self.state_space,self.ngTerminalReward+self.noOfsteps*100,True
         self.updateStateSpace(token1Amount,token1Index)
         profit=self.calculateProfit()
         self.profit=profit
+
+
         if(profit<self.profitThreshold or self.noOfsteps>=self.stepLimit):
             print("#########   Terminal Result--  Low Profit")
             return self.state_space,self.lpTerminalReward,True
         else:
-            print("#########   Terminal State -- PROFIT")
+            print(f"#########   Terminal State -- PROFIT {profit}")
             return self.state_space,profit,False
 
 
@@ -120,17 +127,11 @@ class ENV:
         for i in range(self.count,b):
             state_space[i]=reserves[c]
             c+=1
-        state_space[self.state_dim-1]=self.maGas
+        state_space[self.state_dim-2]=self.maGas
         self.state_space=state_space
 
 
     def reset(self):
-        # contract=w3.eth.contract(address=wethAddr,abi=wethABI)
-        # amountToBurn=contract.caller().balanceOf(recipient)
-        # tx_hash=contract.functions._burn(recipient,amountToBurn).build_transaction({
-        #     "from": recipient,
-        #     "nonce": w3.eth.get_transaction_count(recipient)
-        # })
         self.noOfsteps=0
         self.noOfEpisodes+=1
         if(self.noOfEpisodes%50==0):
@@ -139,6 +140,7 @@ class ENV:
         state_space=np.zeros(self.state_dim)
         reserves=self.reserves()
         state_space[0]=self.get_weth()*self.marketPrice[0]
+        self.initialAmount=state_space[0]
         c=0
         b=self.count+self.pools_dim*2
         market=self.marketPrice
@@ -146,12 +148,14 @@ class ENV:
             state_space[i]=reserves[c]
             c+=1
         c=0
-        for i in range(b,self.state_dim-1):
+        for i in range(b,self.state_dim-2):
             state_space[i]=market[c]
             c+=1
         self.iGasLimit=int(random.uniform(140000,150000))
 
-        state_space[self.state_dim-1]=self.estimateGas()
+        state_space[self.state_dim-2]=self.estimateGas()
+        state_space[self.state_dim-1]=self.initialAmount
+
         self.state_space=state_space
         return state_space
 
@@ -197,7 +201,7 @@ class ENV:
 
     def getStateDim(self):
        p = self.pools_dim*2
-       return self.count*2 + p + 1
+       return self.count*2 + p + 2
 
 
     def getToken(self):

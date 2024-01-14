@@ -5,10 +5,11 @@ from utils import plot_learning_curve
 import math
 
 
+
 profitThreshold=100
 lpTerminalReward=200
 wpTerminalReward=-500
-ngTerminalReward=-100
+ngTerminalReward=-300
 stepLimit=10
 
 env=ENV(profitThreshold,lpTerminalReward,wpTerminalReward,ngTerminalReward,stepLimit)
@@ -64,7 +65,7 @@ def train(env,agent,epsilon,num_episodes):
 
             step_size+=1
         episode_lengths.append(step_size)
-        if(i%100==0):
+        if(i%50==0):
             epsilon = epsilon-0.03
 
 

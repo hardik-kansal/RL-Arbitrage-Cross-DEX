@@ -6,8 +6,6 @@ import numpy as np
 from buffer import ReplayBuffer
 from networks import Actor, Critic
 
-# Alpha for actor Beta for critic
-# buffer_size=memory_size
 class Agent:
     def __init__(self, gamma, alpha, beta, state_dims, action_dims, max_action, min_action, fc1_dim, fc2_dim,
                  memory_size, batch_size, tau, update_period, noise_std, noise_clip, warmup, name, ckpt_dir='tmp'):

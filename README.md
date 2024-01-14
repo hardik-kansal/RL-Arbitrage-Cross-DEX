@@ -101,5 +101,5 @@ stepLimit=10 | **no of steps or swap in a episode **
 - Moving Average Gas predicted > Moving Average gas Used
 - Max step or No of swaps in a single tx - 10
 - Profit > profitThreshold
-- state-space :  [TokenHoldings of Agent (USD),Pool reserves,Market price,Gas Used]
+- state-space :  [TokenHoldings of Agent (USD),Pool reserves,Market price,InitialAmount (fixed each episode),gasUsed]
 - action-space : [PoolIndex,Gaspredicted]
